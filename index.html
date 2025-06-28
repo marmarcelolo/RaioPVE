@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de raio para PVE</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8fafb;
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+            background-image: linear-gradient(to bottom right, #f8fafb, #e8f5e9);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+        
+        h1 {
+            color: #2e7d32;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            color: #4a7c59;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .column {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            border-top: 4px solid #2e7d32;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .column:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .column-title {
+            color: #2e7d32;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .column-title svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #4a7c59;
+            font-size: 15px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background-color: #f8fafb;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #2e7d32;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.2);
+            background-color: white;
+        }
+        
+        button {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(46, 125, 50, 0.3);
+        }
+        
+        button:hover {
+            background-color: #1b5e20;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(46, 125, 50, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(46, 125, 50, 0.3);
+        }
+        
+        button.remove-btn {
+            background-color: #f44336;
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: 500;
+            width: auto;
+            box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+        }
+        
+        button.remove-btn:hover {
+            background-color: #d32f2f;
+            box-shadow: 0 4px 6px rgba(244, 67, 54, 0.4);
+        }
+        
+        #coordinate-list {
+            list-style-type: none;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e8f5e9;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f8fafb;
+        }
+        
+        #coordinate-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: white;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        
+        #coordinate-list li:hover {
+            transform: translateX(3px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+        }
+        
+        .coordinate-item {
+            font-family: monospace;
+            font-size: 15px;
+            color: #2e7d32;
+            font-weight: 500;
+        }
+        
+        #map {
+            height: 400px;
+            border-radius: 10px;
+            margin-top: 10px;
+            z-index: 1;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .export-section {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid #e8f5e9;
+        }
+        
+        .export-section p {
+            margin: 15px 0;
+            color: #666;
+            font-size: 15px;
+            text-align: center;
+        }
+        
+        .instructions {
+            background-color: #e8f5e9;
+            padding: 18px;
+            border-radius: 8px;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #1b5e20;
+            border-left: 4px solid #2e7d32;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 12px;
+            color: #2e7d32;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions ul {
+            padding-left: 25px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #4a7c59;
+            font-size: 15px;
+            margin-top: 20px;
+            border-top: 1px solid #e8f5e9;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        footer a {
+            color: #2e7d32;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        footer a:hover {
+            color: #1b5e20;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            header {
+                padding: 15px 0;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #78909c;
+            font-style: italic;
+        }
+        
+        .counter-badge {
+            background-color: #2e7d32;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Gerador de raio para PVE</h1>
+        <p class="subtitle">Crie e visualize raios de 150m para uso no Google My Maps</p>
+    </header>
+    
+    <div class="container">
+        <!-- Coluna 1: Entrada de Coordenadas -->
+        <div class="column">
+            <h2 class="column-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd" />
+                </svg>
+                Entrada de Coordenadas
+            </h2>
+            <div class="input-group">
+                <label for="coordinate-input">Coordenadas (latitude, longitude):</label>
+                <input type="text" id="coordinate-input" placeholder="Ex: -31.75814, -52.43156">
+                <p style="font-size: 14px; color: #666; margin-top: 8px;">Formato: latitude, longitude (separados por vírgula)</p>
+            </div>
+            <button id="add-coordinate">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg>
+                Adicionar Coordenada
+            </button>
+            
+            <div class="instructions">
+                <h3>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                    </svg>
+                    Como obter coordenadas:
+                </h3>
+                <ul>
+                    <li>Abra o Google Maps e clique com o botão direito no local desejado</li>
+                    <li>Selecione a primeira opção (coordenadas) para copiar</li>
+                    <li>Cole as coordenadas no formato "latitude, longitude"</li>
+                    <li>Clique em "Adicionar Coordenada" para incluir</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Coluna 2: Coordenadas Adicionadas -->
+        <div class="column">
+            <h2 class="column-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.25 2.25a3 3 0 0 0-3 3v4.318a3 3 0 0 0 .879 2.121l9.58 9.581c.92.92 2.39 1.186 3.548.428a18.849 18.849 0 0 0 5.441-5.44c.758-1.16.492-2.629-.428-3.548l-9.58-9.581a3 3 0 0 0-2.122-.879H5.25ZM6.375 7.5a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25Z" clip-rule="evenodd" />
+                </svg>
+                Coordenadas Adicionadas <span class="counter-badge" id="coordinate-count">0</span>
+            </h2>
+            <ul id="coordinate-list">
+                <li class="empty-state">Nenhuma coordenada adicionada</li>
+            </ul>
+            
+            <div class="export-section">
+                <div class="input-group">
+                    <label for="pve-number">Número inicial da PVE:</label>
+                    <input type="text" id="pve-number" placeholder="Ex: 19">
+                </div>
+                <button id="export-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    Exportar todos os arquivos KML
+                </button>
+                <p>Arquivos serão gerados no formato: "PVE [número].kml"</p>
+            </div>
+        </div>
+        
+        <!-- Coluna 3: Visualização no Mapa -->
+        <div class="column">
+            <h2 class="column-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.161 2.58a1.875 1.875 0 0 1 1.678 0l4.993 2.498c.106.052.23.052.336 0l3.869-1.935A1.875 1.875 0 0 1 21.75 4.82v12.485c0 .71-.401 1.36-1.037 1.677l-4.875 2.437a1.875 1.875 0 0 1-1.676 0l-4.994-2.497a.375.375 0 0 0-.336 0l-3.868 1.935A1.875 1.875 0 0 1 2.25 19.18V6.695c0-.71.401-1.36 1.036-1.677l4.875-2.437ZM9 6a.75.75 0 0 1 .75.75V15a.75.75 0 0 1-1.5 0V6.75A.75.75 0 0 1 9 6Zm6.75 3a.75.75 0 0 0-1.5 0v8.25a.75.75 0 0 0 1.5 0V9Z" clip-rule="evenodd" />
+                </svg>
+                Visualização no Mapa
+            </h2>
+            <div id="map"></div>
+            <p style="margin-top: 15px; color: #666; text-align: center; font-weight: 500;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#2e7d32" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 5px;">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                </svg>
+                Raio: 150 metros
+            </p>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Gerador de raio para PVE © 2025 - Desenvolvido por <a href="mailto:marcelo137@gmail.com">Marcelo Rodrigues</a> para facilitar a criação de arquivos KML</p>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Inicializar o mapa com visualização do Brasil
+        const map = L.map('map').setView([-15.7801, -47.9292], 4);
+        
+        // Adicionar camada do mapa
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Array para armazenar coordenadas
+        let coordinates = [];
+        let circles = [];
+        
+        // Elementos DOM
+        const coordinateInput = document.getElementById('coordinate-input');
+        const addButton = document.getElementById('add-coordinate');
+        const coordinateList = document.getElementById('coordinate-list');
+        const pveNumberInput = document.getElementById('pve-number');
+        const exportButton = document.getElementById('export-all');
+        const coordinateCount = document.getElementById('coordinate-count');
+        
+        // Função para validar e adicionar coordenada
+        function addCoordinate() {
+            const input = coordinateInput.value.trim();
+            
+            // Verificar se o campo está vazio
+            if (!input) {
+                alert('Por favor, insira uma coordenada no formato: latitude, longitude');
+                return;
+            }
+            
+            // Verificar formato
+            if (!input.match(/^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$/)) {
+                alert('Formato inválido. Use: latitude, longitude\nExemplo: -31.75814, -52.43156');
+                return;
+            }
+            
+            // Extrair latitude e longitude
+            const [lat, lng] = input.split(',').map(coord => parseFloat(coord.trim()));
+            
+            // Verificar valores válidos
+            if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert('Valores de coordenadas inválidos. Verifique os números.');
+                return;
+            }
+            
+            // Adicionar ao array
+            coordinates.push({ lat, lng });
+            
+            // Atualizar a lista
+            updateCoordinateList();
+            
+            // Atualizar o mapa
+            updateMap();
+            
+            // Limpar o campo de entrada
+            coordinateInput.value = '';
+            coordinateInput.focus();
+        }
+        
+        // Atualizar lista de coordenadas
+        function updateCoordinateList() {
+            coordinateCount.textContent = coordinates.length;
+            
+            if (coordinates.length === 0) {
+                coordinateList.innerHTML = '<li class="empty-state">Nenhuma coordenada adicionada</li>';
+                return;
+            }
+            
+            coordinateList.innerHTML = '';
+            
+            coordinates.forEach((coord, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="coordinate-item">${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</span>
+                    <button class="remove-btn" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                        </svg>
+                        Remover
+                    </button>
+                `;
+                coordinateList.appendChild(li);
+            });
+            
+            // Adicionar eventos aos botões de remover
+            document.querySelectorAll('.remove-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    removeCoordinate(index);
+                });
+            });
+        }
+        
+        // Remover coordenada
+        function removeCoordinate(index) {
+            coordinates.splice(index, 1);
+            updateCoordinateList();
+            updateMap();
+        }
+        
+        // Atualizar mapa com círculos
+        function updateMap() {
+            // Remover círculos anteriores
+            circles.forEach(circle => map.removeLayer(circle));
+            circles = [];
+            
+            // Adicionar novos círculos
+            coordinates.forEach(coord => {
+                const circle = L.circle([coord.lat, coord.lng], {
+                    color: '#2e7d32',
+                    fillColor: '#81c784',
+                    fillOpacity: 0.3,
+                    radius: 150
+                }).addTo(map);
+                
+                // Adicionar popup
+                circle.bindPopup(`Coordenada<br>${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`);
+                
+                circles.push(circle);
+            });
+            
+            // Ajustar o zoom se houver coordenadas
+            if (coordinates.length > 0) {
+                const group = new L.featureGroup(circles);
+                map.fitBounds(group.getBounds().pad(0.1));
+            } else {
+                // Voltar para visualização do Brasil se não houver coordenadas
+                map.setView([-15.7801, -47.9292], 4);
+            }
+        }
+        
+        // Exportar todos os KMLs
+        function exportAllKML() {
+            const pveNumber = pveNumberInput.value.trim();
+            
+            if (!pveNumber) {
+                alert('Por favor, informe o número inicial da PVE.');
+                return;
+            }
+            
+            if (coordinates.length === 0) {
+                alert('Nenhuma coordenada para exportar.');
+                return;
+            }
+            
+            if (!pveNumber.match(/^\d+$/)) {
+                alert('O número da PVE deve conter apenas dígitos.');
+                return;
+            }
+            
+            let count = 0;
+            
+            coordinates.forEach((coord, index) => {
+                const kmlContent = generateKML(coord, parseInt(pveNumber) + index);
+                downloadKML(kmlContent, `PVE ${parseInt(pveNumber) + index}.kml`);
+                count++;
+            });
+            
+            alert(`${count} arquivo(s) KML exportado(s) com sucesso!`);
+        }
+        
+        // Gerar conteúdo KML
+        function generateKML(coord, pveNumber) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>PVE ${pveNumber}</name>
+    <Placemark>
+      <name>PVE ${pveNumber}</name>
+      <description>Raio de 150m para PVE ${pveNumber}</description>
+      <Style>
+        <LineStyle>
+          <color>ff009900</color>
+          <width>2</width>
+        </LineStyle>
+        <PolyStyle>
+          <color>6600cc00</color>
+        </PolyStyle>
+      </Style>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              ${generateCircleCoordinates(coord.lat, coord.lng, 150).join(' ')}
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>Centro PVE ${pveNumber}</name>
+      <Point>
+        <coordinates>${coord.lng},${coord.lat},0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>`;
+        }
+        
+        // Gerar coordenadas para um círculo (36 pontos)
+        function generateCircleCoordinates(lat, lng, radius) {
+            const points = 36;
+            const coords = [];
+            
+            for (let i = 0; i <= points; i++) {
+                const angle = (i / points) * (2 * Math.PI);
+                const dx = radius * Math.cos(angle);
+                const dy = radius * Math.sin(angle);
+                
+                // Converter deslocamento para graus (aproximação)
+                const latOffset = dy / 111320;
+                const lngOffset = dx / (111320 * Math.cos(lat * Math.PI / 180));
+                
+                const circleLat = lat + latOffset;
+                const circleLng = lng + lngOffset;
+                
+                coords.push(`${circleLng},${circleLat},0`);
+            }
+            
+            // Fechar o polígono
+            coords.push(coords[0]);
+            
+            return coords;
+        }
+        
+        // Função para fazer download do KML
+        function downloadKML(content, filename) {
+            const blob = new Blob([content], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+        
+        // Event Listeners
+        addButton.addEventListener('click', addCoordinate);
+        
+        coordinateInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addCoordinate();
+            }
+        });
+        
+        exportButton.addEventListener('click', exportAllKML);
+        
+        // Dica inicial para o usuário
+        //setTimeout(() => {
+        //    alert('Bem-vindo ao Gerador de Raio para PVE!\n\n1. Adicione coordenadas no formato "latitude, longitude"\n2. Visualize os raios no mapa\n3. Exporte os arquivos KML para uso no Google My Maps');
+        //}, 1000);
+    </script>
+</body>
+</html>
